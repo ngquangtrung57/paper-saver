@@ -313,11 +313,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       showStatus('Updating existing entry...', 'loading');
       
       try {
+        console.log('Sending update request to background script...');
+        console.log('Update data:', saveData);
+        console.log('Page ID:', currentDuplicateInfo.notionPageId);
+        
         const response = await chrome.runtime.sendMessage({
           action: 'updateToNotion',
           data: saveData,
           pageId: currentDuplicateInfo.notionPageId
         });
+
+        console.log('Background script response:', response);
 
         if (response && response.success) {
           showStatus('Successfully updated in Notion! 🎉', 'success');
@@ -334,12 +340,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           }, 1500);
         } else {
           const errorMsg = response?.error || 'Failed to update in Notion. Please check your settings.';
+          console.error('Update failed with error:', errorMsg);
+          console.error('Full response:', response);
           showStatus(`❌ ${errorMsg}`, 'error');
         }
 
       } catch (error) {
-        console.error('Update error:', error);
-        showStatus('Failed to update in Notion. Please check your settings.', 'error');
+        console.error('Update error caught in popup:', error);
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+        showStatus('Failed to update in Notion. Please check your settings and try again.', 'error');
       }
     } else {
       showStatus('Saving to Notion...', 'loading');

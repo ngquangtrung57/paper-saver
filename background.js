@@ -62,9 +62,16 @@ async function handleSaveToNotion(pageData) {
 
 async function handleUpdateToNotion(pageData, pageId) {
   try {
+    console.log('handleUpdateToNotion called with:', { pageData, pageId });
+    
     // Get user settings
     const settings = await chrome.storage.sync.get(['notionToken', 'databaseId']);
     
+    console.log('Settings retrieved:', { 
+      hasToken: !!settings.notionToken, 
+      hasDatabaseId: !!settings.databaseId 
+    });
+
     if (!settings.notionToken) {
       throw new Error('Notion token not configured. Please set up your integration in settings.');
     }
@@ -73,8 +80,29 @@ async function handleUpdateToNotion(pageData, pageId) {
       throw new Error('Database ID not configured. Please set up your database in settings.');
     }
 
+    if (!pageId) {
+      throw new Error('Page ID is required for updating an existing entry.');
+    }
+
+    // Validate pageId format (should be a UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(pageId)) {
+      console.warn('Page ID format seems invalid:', pageId);
+      // Try to clean the pageId (remove dashes and add them back)
+      const cleanId = pageId.replace(/-/g, '');
+      if (cleanId.length === 32) {
+        const formattedId = `${cleanId.slice(0,8)}-${cleanId.slice(8,12)}-${cleanId.slice(12,16)}-${cleanId.slice(16,20)}-${cleanId.slice(20)}`;
+        console.log('Reformatted page ID:', formattedId);
+        pageId = formattedId;
+      }
+    }
+
+    console.log('About to update page with ID:', pageId);
+
     // Update the existing page in Notion
     const updatedPage = await updateNotionPage(settings, pageData, pageId);
+    
+    console.log('Update completed successfully:', updatedPage);
     
     // Update local storage
     await updateLocalStorage(pageData, pageId);
@@ -82,8 +110,24 @@ async function handleUpdateToNotion(pageData, pageId) {
     return updatedPage;
     
   } catch (error) {
-    console.error('Error updating Notion page:', error);
-    throw error;
+    console.error('Error in handleUpdateToNotion:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Provide more specific error messages based on the error type
+    if (error.message.includes('404')) {
+      throw new Error('The page to update was not found. It may have been deleted or moved.');
+    } else if (error.message.includes('403')) {
+      throw new Error('Permission denied. Make sure your integration has access to this page.');
+    } else if (error.message.includes('401')) {
+      throw new Error('Authentication failed. Please check your Notion token in settings.');
+    } else if (error.message.includes('400')) {
+      throw new Error('Invalid request. Please check your database properties match the extension requirements.');
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    } else {
+      // Re-throw the original error if it already has a good message
+      throw error;
+    }
   }
 }
 
@@ -340,6 +384,9 @@ function shouldUpdateTitle(title) {
 async function updateNotionPage(settings, pageData, pageId) {
   const { notionToken } = settings;
   
+  console.log('Starting update for page ID:', pageId);
+  console.log('Page data received:', pageData);
+  
   // Validate and clean the pageData
   const cleanedData = {
     title: (pageData.title || "Untitled Page").toString().trim(),
@@ -356,6 +403,8 @@ async function updateNotionPage(settings, pageData, pageId) {
     savedAt: pageData.savedAt || new Date().toISOString(),
     isUpdate: pageData.isUpdate || false
   };
+  
+  console.log('Cleaned data:', cleanedData);
   
   // Prepare the page properties for update
   const properties = {};
@@ -418,34 +467,72 @@ async function updateNotionPage(settings, pageData, pageId) {
     console.log('Skipping work area update - no valid work area selected or keeping current');
   }
 
-  console.log('Updating Notion page:', pageId);
-  console.log('Update data:', JSON.stringify({ properties }, null, 2));
+  console.log('Final properties to update:', JSON.stringify(properties, null, 2));
 
-  // Update the page properties
-  const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${notionToken}`,
-      'Content-Type': 'application/json',
-      'Notion-Version': '2022-06-28'
-    },
-    body: JSON.stringify({ properties })
-  });
+  // Validate that we have something to update
+  if (Object.keys(properties).length === 0) {
+    console.log('No properties to update, skipping page property update');
+  } else {
+    console.log('Updating Notion page properties for page ID:', pageId);
 
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('Notion API error response:', error);
-    throw new Error(`Notion API error: ${error.message || response.statusText}`);
+    try {
+      // Update the page properties
+      const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${notionToken}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify({ properties })
+      });
+
+      console.log('Update response status:', response.status);
+      console.log('Update response ok:', response.ok);
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Notion API error response:', error);
+        throw new Error(`Notion API error (${response.status}): ${error.message || response.statusText}`);
+      }
+
+      const updatedPage = await response.json();
+      console.log('Page successfully updated');
+
+      // If there are new notes, append them to the page content
+      if (cleanedData.notes && cleanedData.notes.trim() !== '') {
+        console.log('Appending notes to page...');
+        await appendNotesToPage(settings, pageId, cleanedData.notes);
+      }
+
+      return updatedPage;
+
+    } catch (error) {
+      console.error('Error updating page properties:', error);
+      throw error;
+    }
   }
 
-  const updatedPage = await response.json();
-
-  // If there are new notes, append them to the page content
+  // If no properties to update but we have notes, still append them
   if (cleanedData.notes && cleanedData.notes.trim() !== '') {
+    console.log('Only appending notes to page (no property updates)...');
     await appendNotesToPage(settings, pageId, cleanedData.notes);
+    
+    // Return a minimal response indicating success
+    return { 
+      id: pageId, 
+      updated: true, 
+      message: 'Notes appended successfully' 
+    };
   }
 
-  return updatedPage;
+  // If nothing to update at all
+  console.log('No updates required');
+  return { 
+    id: pageId, 
+    updated: false, 
+    message: 'No changes to apply' 
+  };
 }
 
 async function appendNotesToPage(settings, pageId, notes) {
@@ -473,6 +560,8 @@ async function appendNotesToPage(settings, pageId, notes) {
     }
   };
 
+  console.log('Note block to append:', JSON.stringify(newNoteBlock, null, 2));
+
   // Append the note block to the page
   try {
     const response = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
@@ -487,16 +576,26 @@ async function appendNotesToPage(settings, pageId, notes) {
       })
     });
 
+    console.log('Append notes response status:', response.status);
+    console.log('Append notes response ok:', response.ok);
+
     if (!response.ok) {
       const error = await response.json();
       console.error('Failed to append notes to page:', error);
       console.error('Response status:', response.status);
       console.error('Response status text:', response.statusText);
+      
+      // Don't throw error for notes append failure, just log it
+      console.warn('Note appending failed but continuing with update...');
     } else {
       console.log('Successfully appended notes to page');
+      const result = await response.json();
+      console.log('Append notes result:', result);
     }
   } catch (error) {
     console.error('Error appending notes to page:', error);
+    // Don't throw error for notes append failure, just log it
+    console.warn('Note appending failed but continuing with update...');
   }
 }
 
