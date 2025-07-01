@@ -317,6 +317,26 @@ async function createNotionPage(settings, pageData) {
   return await response.json();
 }
 
+// Helper function to determine if a title should be updated
+function shouldUpdateTitle(title) {
+  if (!title || typeof title !== 'string') return false;
+  
+  const trimmedTitle = title.trim();
+  
+  // Don't update if it's empty, "Untitled Page", or other common fallback values
+  const skipTitles = [
+    'Untitled Page',
+    'Untitled',
+    'Loading...',
+    'Page not found',
+    '404',
+    'Error',
+    ''
+  ];
+  
+  return !skipTitles.includes(trimmedTitle);
+}
+
 async function updateNotionPage(settings, pageData, pageId) {
   const { notionToken } = settings;
   
@@ -338,8 +358,11 @@ async function updateNotionPage(settings, pageData, pageId) {
   };
   
   // Prepare the page properties for update
-  const properties = {
-    "Title": {
+  const properties = {};
+
+  // Only update title if it's not the default fallback
+  if (shouldUpdateTitle(cleanedData.title)) {
+    properties["Title"] = {
       "title": [
         {
           "type": "text",
@@ -348,24 +371,31 @@ async function updateNotionPage(settings, pageData, pageId) {
           }
         }
       ]
-    },
-    "Category": {
-      "select": {
-        "name": getCategoryName(cleanedData.category)
-      }
-    },
-    "Status": {
-      "select": {
-        "name": getStatusName(cleanedData.readingStatus)
-      }
-    },
-    "Priority": {
-      "checkbox": cleanedData.priority
-    },
-    "Work Area": {
-      "select": {
-        "name": getWorkAreaName(cleanedData.workArea)
-      }
+    };
+    console.log('Title will be updated to:', cleanedData.title);
+  } else {
+    console.log('Skipping title update - title is not valid for updating:', cleanedData.title);
+  }
+
+  properties["Category"] = {
+    "select": {
+      "name": getCategoryName(cleanedData.category)
+    }
+  };
+
+  properties["Status"] = {
+    "select": {
+      "name": getStatusName(cleanedData.readingStatus)
+    }
+  };
+
+  properties["Priority"] = {
+    "checkbox": cleanedData.priority
+  };
+
+  properties["Work Area"] = {
+    "select": {
+      "name": getWorkAreaName(cleanedData.workArea)
     }
   };
 

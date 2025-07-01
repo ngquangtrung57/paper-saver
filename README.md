@@ -96,6 +96,7 @@ When you try to save a URL that's already in your Notion database:
    - Click "Update Existing" to enter update mode
    - Modify any fields (status, category, work area, priority, notes)
    - Notes will be appended (not overwritten) to preserve existing content
+   - Title updates are skipped if set to fallback values like "Untitled Page", "Loading...", etc.
    - Click "Update in Notion" to save changes
 
 ### Visual Indicator

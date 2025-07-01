@@ -282,6 +282,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       showStatus('Please select a work area', 'error');
       return;
     }
+
+    // Warn user if trying to update with "Untitled Page"
+    if (isUpdateMode && !shouldUpdateTitle(titleValue)) {
+      showStatus(`Note: Title "${titleValue}" will not be updated (considered a fallback value)`, 'warning');
+    }
     
     const saveData = {
       ...window.currentPageData,
@@ -581,7 +586,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Hide the duplicate warning since user has chosen to update
     duplicateWarning.style.display = 'none';
     
-    showStatus('Update mode enabled. Modify the fields and click "Update in Notion".', 'success');
+    // Check if current title is "Untitled Page" and show helpful message
+    const currentTitle = document.getElementById('title').value.trim();
+    if (!shouldUpdateTitle(currentTitle)) {
+      showStatus(`Update mode enabled. Note: Edit the title to update it (current "${currentTitle}" will be skipped).`, 'success');
+    } else {
+      showStatus('Update mode enabled. Modify the fields and click "Update in Notion".', 'success');
+    }
   }
 
   function handleSaveAnyway() {
@@ -589,6 +600,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     isUpdateMode = false;
     hideDuplicateWarning();
     showStatus('You can now save this page again', 'success');
+  }
+
+  // Helper function to determine if a title should be updated
+  function shouldUpdateTitle(title) {
+    if (!title || typeof title !== 'string') return false;
+    
+    const trimmedTitle = title.trim();
+    
+    // Don't update if it's empty, "Untitled Page", or other common fallback values
+    const skipTitles = [
+      'Untitled Page',
+      'Untitled',
+      'Loading...',
+      'Page not found',
+      '404',
+      'Error',
+      ''
+    ];
+    
+    return !skipTitles.includes(trimmedTitle);
   }
 });
 
