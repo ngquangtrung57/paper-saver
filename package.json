@@ -19,11 +19,11 @@
     "save-to-notion",
     "paper-saver"
   ],
-  "author": "Your Name",
+  "author": "ngquangtrung57",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/notion-paper-saver"
+    "url": "https://github.com/ngquangtrung57/paper-saver"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.246"
