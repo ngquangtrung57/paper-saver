@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save to Notion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="icons/icon32.png" alt="Notion Saver" class="logo-icon">
+        <h1>Notion Saver</h1>
+      </div>
+      <button class="settings-btn" id="settingsBtn" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="m12 1 1.4 1.4L16 2l-.6 2.4L18 6l-2.4.6L16 9l-1.4-1.4L12 8l-1.4-1.4L8 6l.6-2.4L6 2l2.4-.6L8 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <div class="page-info" id="pageInfo">
+      <div class="page-title" id="pageTitle">Loading...</div>
+      <div class="page-url" id="pageUrl"></div>
+      <div class="content-type" id="contentType"></div>
+    </div>
+
+    <!-- Status messages moved to top for better visibility -->
+    <div class="status-message" id="statusMessage"></div>
+    
+    <!-- Duplicate warning section -->
+    <div class="duplicate-warning" id="duplicateWarning" style="display: none;">
+      <div class="duplicate-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m21 16-4 4-4-4"/>
+          <path d="M17 20V4"/>
+          <path d="m3 8 4-4 4 4"/>
+          <path d="M7 4v16"/>
+        </svg>
+        <span>Already Saved</span>
+      </div>
+      <div class="duplicate-details">
+        This URL was previously saved on <span id="duplicateDate"></span>
+        <div id="currentValues" style="margin-top: 8px; display: none;">
+          <small style="color: #666;">
+            <strong>Current:</strong> <span id="currentStatus"></span> • <span id="currentCategory"></span> • <span id="currentWorkArea"></span>
+          </small>
+        </div>
+      </div>
+      <div class="duplicate-actions">
+        <button type="button" class="view-existing-btn" id="viewExistingBtn">View Existing</button>
+        <button type="button" class="update-existing-btn" id="updateExistingBtn">Update Existing</button>
+        <button type="button" class="save-anyway-btn" id="saveAnywayBtn">Save Anyway</button>
+      </div>
+    </div>
+
+    <form class="save-form" id="saveForm">
+      <div class="form-group">
+        <label for="title">Title</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="title" placeholder="Page title..." required style="flex: 1;">
+          <button type="button" class="refresh-title-btn" id="refreshTitleBtn" title="Refresh title from page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+            </svg>
+          </button>
+        </div>
+        <small>Auto-extracted from page - click refresh to re-extract</small>
+      </div>
+
+      <div class="form-group">
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="">Select a category...</option>
+          <option value="research-papers">📄 Research Papers</option>
+          <option value="blog-posts">📝 Blog Posts</option>
+          <option value="videos">🎥 Videos</option>
+          <option value="documentation">📚 Documentation</option>
+          <option value="articles">📰 Articles</option>
+          <option value="tutorials">🎓 Tutorials</option>
+          <option value="tools">🔧 Tools</option>
+          <option value="other">📋 Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="workArea">Work Area</label>
+        <select id="workArea" required>
+          <option value="">Select work area...</option>
+          <option value="work">💼 Work</option>
+          <option value="lab">🔬 Lab</option>
+          <option value="side-project">🚀 Side Project</option>
+          <option value="personal-interest">💡 Personal Interest</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="tags">Tags (optional)</label>
+        <input type="text" id="tags" placeholder="machine-learning, ai, productivity">
+        <small>Separate tags with commas</small>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Quick Notes (optional)</label>
+        <textarea id="notes" placeholder="Add your thoughts, summary, or key takeaways..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="readingStatus">Reading Status</label>
+        <select id="readingStatus">
+          <option value="to-read">📚 To Read</option>
+          <option value="reading">👀 Currently Reading</option>
+          <option value="completed">✅ Completed</option>
+          <option value="reference">🔖 Reference</option>
+        </select>
+      </div>
+
+      <div class="form-group priority">
+        <label>
+          <input type="checkbox" id="priority">
+          <span class="checkmark"></span>
+          Mark as high priority
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="save-btn" id="saveBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17,21 17,13 7,13 7,21"></polyline>
+            <polyline points="7,3 7,8 15,8"></polyline>
+          </svg>
+          Save to Notion
+        </button>
+      </div>
+    </form>
+
+    <div class="footer">
+      <small>Press Ctrl+Shift+S for quick save</small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html> 

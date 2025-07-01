@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Paper Saver - Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🔧 Notion Paper Saver Settings</h1>
+      <p>Configure your Notion integration to start saving articles, papers, and videos</p>
+    </header>
+
+    <div class="setup-guide">
+      <h2>📋 Setup Guide</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Create Notion Integration</h3>
+            <p>Go to <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a> and create a new integration</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Get Integration Token</h3>
+            <p>Copy the "Internal Integration Token" from your integration page</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Create Database</h3>
+            <p>Create a new database in Notion or use an existing one</p>
+            <button class="create-template-btn" id="createTemplateBtn">📄 Create Template Database</button>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h3>Share Database</h3>
+            <p>Share your database with your integration</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form class="settings-form" id="settingsForm">
+      <div class="form-section">
+        <h2>🔐 Notion API Configuration</h2>
+        
+        <div class="form-group">
+          <label for="notionToken">Notion Integration Token</label>
+          <input type="password" id="notionToken" placeholder="ntn_... or secret_...">
+          <small>Your Notion integration token (starts with "ntn_" or "secret_")</small>
+        </div>
+
+        <div class="form-group">
+          <label for="databaseId">Database ID</label>
+          <input type="text" id="databaseId" placeholder="12345678-1234-1234-1234-123456789012">
+          <small>The ID of your Notion database (32 character string)</small>
+          <button type="button" class="helper-btn" id="findDatabaseBtn">🔍 Find My Databases</button>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>⚙️ Preferences</h2>
+        
+        <div class="form-group">
+          <label for="defaultCategory">Default Category</label>
+          <select id="defaultCategory">
+            <option value="">No default</option>
+            <option value="research-papers">📄 Research Papers</option>
+            <option value="blog-posts">📝 Blog Posts</option>
+            <option value="videos">🎥 Videos</option>
+            <option value="documentation">📚 Documentation</option>
+            <option value="articles">📰 Articles</option>
+            <option value="tutorials">🎓 Tutorials</option>
+            <option value="tools">🔧 Tools</option>
+            <option value="other">📋 Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="defaultWorkArea">Default Work Area</label>
+          <select id="defaultWorkArea">
+            <option value="">No default</option>
+            <option value="work">💼 Work</option>
+            <option value="lab">🔬 Lab</option>
+            <option value="side-project">🚀 Side Project</option>
+            <option value="personal-interest">💡 Personal Interest</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="autoSave">
+            Enable auto-save for known content types
+          </label>
+          <small>Automatically save without showing popup for detected papers/videos</small>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="showIndicator">
+            Show save indicator on pages
+          </label>
+          <small>Display a floating save button when hovering near top-right corner</small>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="test-btn" id="testConnectionBtn">🧪 Test Connection</button>
+        <button type="submit" class="save-btn">💾 Save Settings</button>
+      </div>
+    </form>
+
+    <div class="status-message" id="statusMessage"></div>
+
+    <div class="database-list" id="databaseList" style="display: none;">
+      <h3>📊 Available Databases</h3>
+      <div class="databases" id="databases"></div>
+    </div>
+
+    <div class="footer">
+      <p>Need help? Check out the <a href="https://developers.notion.com/docs/getting-started" target="_blank">Notion API documentation</a></p>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html> 

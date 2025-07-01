@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator for Notion Paper Saver</title>
+    <style>
+        body {
+            font-family: system-ui;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .icon-preview {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        .icon {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .download-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h1>📑 Notion Paper Saver - Icon Generator</h1>
+        <p>This page generates simple placeholder icons for the Chrome extension. Click the download buttons to save each icon size.</p>
+        <p><strong>Note:</strong> These are basic placeholder icons. For production, consider creating custom icons using design tools.</p>
+    </div>
+
+    <div class="icon-preview">
+        <div class="icon" style="width: 16px; height: 16px; font-size: 10px;">N</div>
+        <div>16x16</div>
+        <button class="download-btn" onclick="downloadIcon(16)">Download</button>
+    </div>
+
+    <div class="icon-preview">
+        <div class="icon" style="width: 32px; height: 32px; font-size: 18px;">N</div>
+        <div>32x32</div>
+        <button class="download-btn" onclick="downloadIcon(32)">Download</button>
+    </div>
+
+    <div class="icon-preview">
+        <div class="icon" style="width: 48px; height: 48px; font-size: 24px;">N</div>
+        <div>48x48</div>
+        <button class="download-btn" onclick="downloadIcon(48)">Download</button>
+    </div>
+
+    <div class="icon-preview">
+        <div class="icon" style="width: 128px; height: 128px; font-size: 64px;">N</div>
+        <div>128x128</div>
+        <button class="download-btn" onclick="downloadIcon(128)">Download</button>
+    </div>
+
+    <script>
+        function downloadIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Add rounded corners
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            const radius = size * 0.15;
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+
+            // Add text
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.5}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('N', size / 2, size / 2);
+
+            // Download
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon${size}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Polyfill for roundRect if needed
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.arcTo(x + width, y, x + width, y + height, radius);
+                this.arcTo(x + width, y + height, x, y + height, radius);
+                this.arcTo(x, y + height, x, y, radius);
+                this.arcTo(x, y, x + width, y, radius);
+                this.closePath();
+            };
+        }
+    </script>
+</body>
+</html> 

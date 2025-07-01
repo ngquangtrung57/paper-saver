@@ -1,0 +1,37 @@
+{
+  "name": "notion-paper-saver",
+  "version": "1.0.0",
+  "description": "Chrome extension to save papers, articles, and videos to Notion",
+  "main": "background.js",
+  "scripts": {
+    "build": "echo 'Building extension...' && npm run validate",
+    "validate": "echo 'Validating manifest...' && node -p 'JSON.parse(require(\"fs\").readFileSync(\"manifest.json\", \"utf8\"))'",
+    "pack": "echo 'Creating extension package...' && powershell Compress-Archive -Path . -DestinationPath notion-paper-saver.zip -Force",
+    "dev": "echo 'Development mode - Load extension in Chrome from current directory'",
+    "clean": "echo 'Cleaning build files...' && del /Q notion-paper-saver.zip 2>nul || echo 'No zip file to clean'"
+  },
+  "keywords": [
+    "notion",
+    "chrome-extension",
+    "productivity",
+    "research",
+    "bookmarks",
+    "save-to-notion",
+    "paper-saver"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/notion-paper-saver"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.246"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "chrome >= 88"
+  ]
+} 
