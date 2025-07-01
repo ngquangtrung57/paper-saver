@@ -273,14 +273,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (!categoryValue) {
-      showStatus('Please select a category', 'error');
-      return;
-    }
+    // Only require category and work area for new saves, not updates
+    if (!isUpdateMode) {
+      if (!categoryValue) {
+        showStatus('Please select a category', 'error');
+        return;
+      }
 
-    if (!workAreaValue) {
-      showStatus('Please select a work area', 'error');
-      return;
+      if (!workAreaValue) {
+        showStatus('Please select a work area', 'error');
+        return;
+      }
     }
 
     // Warn user if trying to update with "Untitled Page"
@@ -540,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Reset save button
     const originalContent = saveBtn.innerHTML;
-    if (saveBtn.textContent.includes('Already Saved')) {
+    if (saveBtn.textContent.includes('Already Saved') || saveBtn.textContent.includes('Update in Notion')) {
       saveBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
         <polyline points="17,21 17,13 7,13 7,21"></polyline>
@@ -549,6 +552,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       Save to Notion`;
       saveBtn.disabled = false;
       saveBtn.style.background = '';
+    }
+    
+    // Reset form labels if we were in update mode
+    if (isUpdateMode) {
+      resetFormLabelsForCreateMode();
     }
     
     // Reset states
@@ -572,6 +580,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     isUpdateMode = true;
     allowDuplicateSave = false;
     
+    // Update form labels to indicate optional fields
+    updateFormLabelsForUpdateMode();
+    
     // Update save button to reflect update mode
     saveBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
@@ -591,7 +602,97 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!shouldUpdateTitle(currentTitle)) {
       showStatus(`Update mode enabled. Note: Edit the title to update it (current "${currentTitle}" will be skipped).`, 'success');
     } else {
-      showStatus('Update mode enabled. Modify the fields and click "Update in Notion".', 'success');
+      showStatus('Update mode enabled. Modify any fields and click "Update in Notion". Empty fields will keep their current values.', 'success');
+    }
+  }
+
+  function updateFormLabelsForUpdateMode() {
+    // Update category label and show "keep current" option
+    const categoryLabel = document.querySelector('label[for="category"]');
+    if (categoryLabel) {
+      categoryLabel.innerHTML = 'Category <small style="color: #666; font-weight: normal;">(optional - leave empty to keep current)</small>';
+    }
+    const categorySelect = document.getElementById('category');
+    const categoryKeepOption = categorySelect.querySelector('option[value="keep-current"]');
+    if (categoryKeepOption) {
+      categoryKeepOption.style.display = 'block';
+      categoryKeepOption.textContent = '🔄 Keep current value';
+    }
+    // Update first option text for update mode
+    const categoryFirstOption = categorySelect.querySelector('option[value=""]');
+    if (categoryFirstOption) {
+      categoryFirstOption.textContent = 'Keep current value';
+    }
+    // Remove required attribute in update mode
+    categorySelect.removeAttribute('required');
+    
+    // Update work area label and show "keep current" option
+    const workAreaLabel = document.querySelector('label[for="workArea"]');
+    if (workAreaLabel) {
+      workAreaLabel.innerHTML = 'Work Area <small style="color: #666; font-weight: normal;">(optional - leave empty to keep current)</small>';
+    }
+    const workAreaSelect = document.getElementById('workArea');
+    const workAreaKeepOption = workAreaSelect.querySelector('option[value="keep-current"]');
+    if (workAreaKeepOption) {
+      workAreaKeepOption.style.display = 'block';
+      workAreaKeepOption.textContent = '🔄 Keep current value';
+    }
+    // Update first option text for update mode
+    const workAreaFirstOption = workAreaSelect.querySelector('option[value=""]');
+    if (workAreaFirstOption) {
+      workAreaFirstOption.textContent = 'Keep current value';
+    }
+    // Remove required attribute in update mode
+    workAreaSelect.removeAttribute('required');
+    
+    // Update reading status label
+    const statusLabel = document.querySelector('label[for="readingStatus"]');
+    if (statusLabel) {
+      statusLabel.innerHTML = 'Reading Status <small style="color: #666; font-weight: normal;">(leave as-is to keep current)</small>';
+    }
+  }
+
+  function resetFormLabelsForCreateMode() {
+    // Reset category label and hide "keep current" option
+    const categoryLabel = document.querySelector('label[for="category"]');
+    if (categoryLabel) {
+      categoryLabel.textContent = 'Category';
+    }
+    const categorySelect = document.getElementById('category');
+    const categoryKeepOption = categorySelect.querySelector('option[value="keep-current"]');
+    if (categoryKeepOption) {
+      categoryKeepOption.style.display = 'none';
+    }
+    // Reset first option text
+    const categoryFirstOption = categorySelect.querySelector('option[value=""]');
+    if (categoryFirstOption) {
+      categoryFirstOption.textContent = 'Select a category...';
+    }
+    // Add required attribute back
+    categorySelect.setAttribute('required', '');
+    
+    // Reset work area label and hide "keep current" option
+    const workAreaLabel = document.querySelector('label[for="workArea"]');
+    if (workAreaLabel) {
+      workAreaLabel.textContent = 'Work Area';
+    }
+    const workAreaSelect = document.getElementById('workArea');
+    const workAreaKeepOption = workAreaSelect.querySelector('option[value="keep-current"]');
+    if (workAreaKeepOption) {
+      workAreaKeepOption.style.display = 'none';
+    }
+    // Reset first option text
+    const workAreaFirstOption = workAreaSelect.querySelector('option[value=""]');
+    if (workAreaFirstOption) {
+      workAreaFirstOption.textContent = 'Select work area...';
+    }
+    // Add required attribute back
+    workAreaSelect.setAttribute('required', '');
+    
+    // Reset reading status label
+    const statusLabel = document.querySelector('label[for="readingStatus"]');
+    if (statusLabel) {
+      statusLabel.textContent = 'Reading Status';
     }
   }
 

@@ -377,27 +377,46 @@ async function updateNotionPage(settings, pageData, pageId) {
     console.log('Skipping title update - title is not valid for updating:', cleanedData.title);
   }
 
-  properties["Category"] = {
-    "select": {
-      "name": getCategoryName(cleanedData.category)
-    }
-  };
+  // Only update category if a valid category is selected
+  if (cleanedData.category && cleanedData.category !== '' && cleanedData.category !== 'other' && cleanedData.category !== 'keep-current') {
+    properties["Category"] = {
+      "select": {
+        "name": getCategoryName(cleanedData.category)
+      }
+    };
+    console.log('Category will be updated to:', cleanedData.category);
+  } else {
+    console.log('Skipping category update - no valid category selected or keeping current');
+  }
 
-  properties["Status"] = {
-    "select": {
-      "name": getStatusName(cleanedData.readingStatus)
-    }
-  };
+  // Only update status if a valid status is selected
+  if (cleanedData.readingStatus && cleanedData.readingStatus !== '' && cleanedData.readingStatus !== 'to-read' && cleanedData.readingStatus !== 'keep-current') {
+    properties["Status"] = {
+      "select": {
+        "name": getStatusName(cleanedData.readingStatus)
+      }
+    };
+    console.log('Status will be updated to:', cleanedData.readingStatus);
+  } else {
+    console.log('Skipping status update - no valid status selected or keeping current');
+  }
 
+  // Always update priority since it's a simple boolean
   properties["Priority"] = {
     "checkbox": cleanedData.priority
   };
 
-  properties["Work Area"] = {
-    "select": {
-      "name": getWorkAreaName(cleanedData.workArea)
-    }
-  };
+  // Only update work area if a valid work area is selected
+  if (cleanedData.workArea && cleanedData.workArea !== '' && cleanedData.workArea !== 'personal-interest' && cleanedData.workArea !== 'keep-current') {
+    properties["Work Area"] = {
+      "select": {
+        "name": getWorkAreaName(cleanedData.workArea)
+      }
+    };
+    console.log('Work Area will be updated to:', cleanedData.workArea);
+  } else {
+    console.log('Skipping work area update - no valid work area selected or keeping current');
+  }
 
   console.log('Updating Notion page:', pageId);
   console.log('Update data:', JSON.stringify({ properties }, null, 2));
