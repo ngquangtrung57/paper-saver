@@ -318,8 +318,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'createNotionDatabase') {
-    handleCreateNotionDatabase(request.token, request.parentPageId, request.dbName)
-      .then(db => sendResponse({ success: true, databaseId: db.id }))
+    handleCreateNotionDatabase(request.token, request.parentPageId, request.dbName, request.icon)
+      .then(db => sendResponse({ success: true, databaseId: db.id, subpageId: db._subpageId }))
       .catch(e => sendResponse({ success: false, error: e.message }));
     return true;
   }
@@ -829,13 +829,46 @@ async function appendNotesToPage(settings, pageId, notes) {
 // NOTION DATABASE CREATION
 // ============================================================
 
-async function handleCreateNotionDatabase(token, parentPageId, dbName) {
+async function handleCreateNotionDatabase(token, parentPageId, dbName, icon) {
   const cleanParentId = extractNotionId(parentPageId);
   if (!cleanParentId) {
     throw new Error('Invalid parent page URL or ID. Please paste a valid Notion page URL or ID.');
   }
 
-  const response = await fetch('https://api.notion.com/v1/databases', {
+  // Step 1: Create a subpage under the parent
+  const pagePayload = {
+    parent: { type: 'page_id', page_id: cleanParentId },
+    properties: {
+      title: { title: [{ type: 'text', text: { content: dbName || 'Paper Saver Collection' } }] }
+    }
+  };
+  if (icon) {
+    pagePayload.icon = { type: 'emoji', emoji: icon };
+  }
+
+  const pageResponse = await fetch('https://api.notion.com/v1/pages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Notion-Version': '2022-06-28'
+    },
+    body: JSON.stringify(pagePayload)
+  });
+
+  if (!pageResponse.ok) {
+    const error = await pageResponse.json();
+    if (pageResponse.status === 404) {
+      throw new Error('Parent page not found. Make sure you shared it with your integration via the "..." menu → "Add connections".');
+    }
+    throw new Error(error.message || `Failed to create subpage (${pageResponse.status})`);
+  }
+
+  const subpage = await pageResponse.json();
+  const subpageId = subpage.id;
+
+  // Step 2: Create the database inside the subpage
+  const dbResponse = await fetch('https://api.notion.com/v1/databases', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -843,21 +876,21 @@ async function handleCreateNotionDatabase(token, parentPageId, dbName) {
       'Notion-Version': '2022-06-28'
     },
     body: JSON.stringify({
-      parent: { type: 'page_id', page_id: cleanParentId },
-      title: [{ type: 'text', text: { content: dbName || 'Paper Saver Collection' } }],
+      parent: { type: 'page_id', page_id: subpageId },
+      title: [{ type: 'text', text: { content: (dbName || 'Paper Saver') + ' Papers' } }],
       properties: PAPER_SAVER_DB_SCHEMA
     })
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    if (response.status === 404) {
-      throw new Error('Parent page not found. Make sure you shared it with your integration via the "..." menu → "Add connections".');
-    }
-    throw new Error(error.message || `API error ${response.status}`);
+  if (!dbResponse.ok) {
+    const error = await dbResponse.json();
+    throw new Error(error.message || `Failed to create database (${dbResponse.status})`);
   }
 
-  return await response.json();
+  const database = await dbResponse.json();
+  // Return the database but also attach the subpage ID
+  database._subpageId = subpageId;
+  return database;
 }
 
 async function handleFindNotionPages(token) {

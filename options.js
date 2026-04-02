@@ -274,7 +274,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         action: 'createNotionDatabase',
         token,
         parentPageId,
-        dbName: 'Paper Saver Collection'
+        dbName: 'Paper Saver Collection',
+        icon: '📚'
       });
 
       if (result.success) {
@@ -508,7 +509,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         action: 'createNotionDatabase',
         token,
         parentPageId: parentInput,
-        dbName
+        dbName,
+        icon: editProjectIcon.value.trim() || undefined
       });
 
       if (result.success) {
