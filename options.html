@@ -9,10 +9,136 @@
 <body>
   <div class="container">
     <header class="header">
-      <h1>🔧 Notion Paper Saver Settings</h1>
-      <p>Configure your Notion integration to start saving articles, papers, and videos</p>
+      <h1>📚 Notion Paper Saver</h1>
+      <p>Multi-project support · Source enrichment · Right-click saving</p>
     </header>
 
+    <!-- ====================================================
+         PROJECTS SECTION
+         ==================================================== -->
+    <div class="projects-wrapper">
+      <div class="projects-header">
+        <h2>📁 Projects</h2>
+        <button type="button" class="add-project-btn" id="addProjectBtn">+ New Project</button>
+      </div>
+
+      <!-- Legacy migration notice -->
+      <div class="migration-notice" id="migrationNotice" style="display:none;">
+        <div class="migration-text">
+          <strong>Legacy configuration detected.</strong>
+          Import your existing database as your first project.
+        </div>
+        <button type="button" class="migration-import-btn" id="importLegacyBtn">Import as Project</button>
+      </div>
+
+      <!-- Project cards list -->
+      <div class="project-cards" id="projectCards">
+        <div class="project-empty" id="projectEmpty" style="display:none;">
+          <p>No projects yet. Click <strong>+ New Project</strong> to get started.</p>
+        </div>
+      </div>
+
+      <!-- Project edit / create panel -->
+      <div class="project-edit-panel" id="projectEditPanel" style="display:none;">
+        <h3 id="editPanelTitle">New Project</h3>
+        <input type="hidden" id="editProjectId" value="">
+
+        <div class="form-group">
+          <label for="editProjectName">Project Name <span class="required">*</span></label>
+          <input type="text" id="editProjectName" placeholder="e.g. PhD Research, Work Reading List...">
+        </div>
+
+        <div class="edit-color-icon-row">
+          <div class="form-group" style="flex:1;">
+            <label for="editProjectColor">Color</label>
+            <input type="color" id="editProjectColor" value="#667eea" class="color-input">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label for="editProjectIcon">Emoji Icon</label>
+            <input type="text" id="editProjectIcon" placeholder="📄" maxlength="2" class="emoji-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editProjectDbId">Notion Database ID</label>
+          <input type="text" id="editProjectDbId" placeholder="32-char hex ID or leave empty to create new">
+          <small>Found in your Notion database URL · or leave empty and create one below</small>
+        </div>
+
+        <!-- Create new DB sub-form (shown when DB ID is empty) -->
+        <div class="create-db-subform" id="createDbSubform">
+          <div class="subform-label">— or create a new database —</div>
+          <div class="form-group">
+            <label for="newDbName">Database Name</label>
+            <input type="text" id="newDbName" placeholder="e.g. Research Papers">
+          </div>
+          <div class="form-group">
+            <label for="parentPageInput">Parent Notion Page <span class="required">*</span></label>
+            <div class="parent-page-row">
+              <input type="text" id="parentPageInput" placeholder="Paste Notion page URL or ID...">
+              <button type="button" class="pick-page-btn" id="pickParentPageBtn">Pick page</button>
+            </div>
+            <small>The database will be created inside this page · make sure it's shared with your integration</small>
+          </div>
+          <button type="button" class="create-db-action-btn" id="createDbBtn">📄 Create Database</button>
+          <div class="create-db-status" id="createDbStatus" style="display:none;"></div>
+        </div>
+
+        <div class="edit-row">
+          <div class="form-group" style="flex:1;">
+            <label for="editDefaultCategory">Default Category</label>
+            <select id="editDefaultCategory">
+              <option value="">No default</option>
+              <option value="research-papers">📄 Research Papers</option>
+              <option value="blog-posts">📝 Blog Posts</option>
+              <option value="videos">🎥 Videos</option>
+              <option value="documentation">📚 Documentation</option>
+              <option value="articles">📰 Articles</option>
+              <option value="tutorials">🎓 Tutorials</option>
+              <option value="tools">🔧 Tools</option>
+              <option value="other">📋 Other</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label for="editDefaultWorkArea">Default Work Area</label>
+            <select id="editDefaultWorkArea">
+              <option value="">No default</option>
+              <option value="work">💼 Work</option>
+              <option value="lab">🔬 Lab</option>
+              <option value="side-project">🚀 Side Project</option>
+              <option value="personal-interest">💡 Personal Interest</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="edit-panel-actions">
+          <button type="button" class="cancel-btn" id="cancelEditProjectBtn">Cancel</button>
+          <button type="button" class="test-conn-btn" id="testProjectConnectionBtn">Test Connection</button>
+          <button type="button" class="save-project-btn" id="saveProjectBtn">Save Project</button>
+        </div>
+
+        <div class="panel-status" id="panelStatus" style="display:none;"></div>
+      </div>
+
+      <!-- Page picker (shown when picking parent page) -->
+      <div class="page-picker" id="pagePicker" style="display:none;">
+        <div class="page-picker-header">
+          <strong>Select Parent Page</strong>
+          <button type="button" class="close-picker-btn" id="closePagePickerBtn">×</button>
+        </div>
+        <div class="page-picker-body">
+          <div class="page-picker-loading" id="pagePickerLoading">Searching accessible pages...</div>
+          <div class="page-picker-list" id="pagePickerList"></div>
+          <div class="page-picker-empty" id="pagePickerEmpty" style="display:none;">
+            No pages found. Make sure you shared at least one page with your integration via its "..." menu → "Add connections".
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================
+         SETUP GUIDE
+         ==================================================== -->
     <div class="setup-guide">
       <h2>📋 Setup Guide</h2>
       <div class="steps">
@@ -27,88 +153,64 @@
           <div class="step-number">2</div>
           <div class="step-content">
             <h3>Get Integration Token</h3>
-            <p>Copy the "Internal Integration Token" from your integration page</p>
+            <p>Copy the "Internal Integration Token" — it starts with <code>ntn_</code> or <code>secret_</code></p>
           </div>
         </div>
         <div class="step">
           <div class="step-number">3</div>
           <div class="step-content">
-            <h3>Create Database</h3>
-            <p>Create a new database in Notion or use an existing one</p>
-            <button class="create-template-btn" id="createTemplateBtn">📄 Create Template Database</button>
+            <h3>Create a Project</h3>
+            <p>Use <strong>+ New Project</strong> above to create a project. You can create a new Notion database or link an existing one.</p>
+            <button class="create-template-btn" id="createTemplateBtn">📄 Quick Create Database</button>
           </div>
         </div>
         <div class="step">
           <div class="step-number">4</div>
           <div class="step-content">
-            <h3>Share Database</h3>
-            <p>Share your database with your integration</p>
+            <h3>Share with Integration</h3>
+            <p>Open any Notion page, click <strong>"..."</strong> → <strong>"Add connections"</strong> → select your integration</p>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- ====================================================
+         SETTINGS FORM
+         ==================================================== -->
     <form class="settings-form" id="settingsForm">
       <div class="form-section">
-        <h2>🔐 Notion API Configuration</h2>
-        
+        <h2>🔐 Notion API Token</h2>
         <div class="form-group">
-          <label for="notionToken">Notion Integration Token</label>
+          <label for="notionToken">Integration Token</label>
           <input type="password" id="notionToken" placeholder="ntn_... or secret_...">
-          <small>Your Notion integration token (starts with "ntn_" or "secret_")</small>
+          <small>Your Notion integration token — shared across all projects</small>
         </div>
+      </div>
 
+      <div class="form-section">
+        <h2>🔗 Legacy Database (optional)</h2>
         <div class="form-group">
           <label for="databaseId">Database ID</label>
           <input type="text" id="databaseId" placeholder="12345678-1234-1234-1234-123456789012">
-          <small>The ID of your Notion database (32 character string)</small>
+          <small>Used as fallback if no project is active · use Projects above for multi-project support</small>
           <button type="button" class="helper-btn" id="findDatabaseBtn">🔍 Find My Databases</button>
         </div>
       </div>
 
       <div class="form-section">
-        <h2>⚙️ Preferences</h2>
-        
+        <h2>⚙️ Global Preferences</h2>
         <div class="form-group">
-          <label for="defaultCategory">Default Category</label>
-          <select id="defaultCategory">
-            <option value="">No default</option>
-            <option value="research-papers">📄 Research Papers</option>
-            <option value="blog-posts">📝 Blog Posts</option>
-            <option value="videos">🎥 Videos</option>
-            <option value="documentation">📚 Documentation</option>
-            <option value="articles">📰 Articles</option>
-            <option value="tutorials">🎓 Tutorials</option>
-            <option value="tools">🔧 Tools</option>
-            <option value="other">📋 Other</option>
-          </select>
+          <label>
+            <input type="checkbox" id="showIndicator">
+            Show ✓ badge on extension icon for already-saved pages
+          </label>
         </div>
-
-        <div class="form-group">
-          <label for="defaultWorkArea">Default Work Area</label>
-          <select id="defaultWorkArea">
-            <option value="">No default</option>
-            <option value="work">💼 Work</option>
-            <option value="lab">🔬 Lab</option>
-            <option value="side-project">🚀 Side Project</option>
-            <option value="personal-interest">💡 Personal Interest</option>
-          </select>
-        </div>
-
         <div class="form-group">
           <label>
             <input type="checkbox" id="autoSave">
             Enable auto-save for known content types
           </label>
-          <small>Automatically save without showing popup for detected papers/videos</small>
-        </div>
-
-        <div class="form-group">
-          <label>
-            <input type="checkbox" id="showIndicator">
-            Show save indicator on pages
-          </label>
-          <small>Display a floating save button when hovering near top-right corner</small>
+          <small>Automatically save without popup for detected papers/videos</small>
         </div>
       </div>
 
@@ -126,10 +228,13 @@
     </div>
 
     <div class="footer">
-      <p>Need help? Check out the <a href="https://developers.notion.com/docs/getting-started" target="_blank">Notion API documentation</a></p>
+      <p>
+        Right-click any page or link to save ·
+        <a href="https://developers.notion.com/docs/getting-started" target="_blank">Notion API docs</a>
+      </p>
     </div>
   </div>
 
   <script src="options.js"></script>
 </body>
-</html> 
+</html>

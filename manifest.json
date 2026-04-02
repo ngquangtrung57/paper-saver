@@ -1,16 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Notion Paper Saver",
-  "version": "1.0.0",
-  "description": "Save papers, blogs, videos and documents directly to your Notion workspace with categories and notes",
+  "version": "2.0.0",
+  "description": "Save papers, blogs, videos and documents to Notion with multi-project support, source enrichment, and context menus",
   "permissions": [
     "activeTab",
     "storage",
     "scripting",
-    "tabs"
+    "tabs",
+    "contextMenus",
+    "notifications"
   ],
   "host_permissions": [
-    "https://api.notion.com/*"
+    "https://api.notion.com/*",
+    "https://export.arxiv.org/*",
+    "https://api.github.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -48,4 +52,4 @@
       "description": "Save current page to Notion"
     }
   }
-} 
+}
