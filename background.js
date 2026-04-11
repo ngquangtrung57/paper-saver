@@ -83,10 +83,48 @@ function setupContextMenus() {
   });
 }
 
+// Pre-configured projects seeded from Notion setup
+const SEED_PROJECTS = [
+  { name: 'Multimodal Benchmarks', workArea: 'Lab',               databaseId: '33fcbc4f-2123-81e1-b4c3-e11923131b16', icon: '📊' },
+  { name: 'Omni Models',           workArea: 'Lab',               databaseId: '33fcbc4f-2123-815f-a55f-db510377a834', icon: '🤖' },
+  { name: 'Hallucination Mitigation', workArea: 'Lab',            databaseId: '33fcbc4f-2123-816d-a695-ce7e216b49a4', icon: '🛡️' },
+  { name: 'Visual Reasoning',      workArea: 'Lab',               databaseId: '33fcbc4f-2123-8107-92ba-f3d084c6c805', icon: '👁️' },
+  { name: 'Reward Modeling',       workArea: 'Lab',               databaseId: '33fcbc4f-2123-8169-b485-e1a395784f22', icon: '🏆' },
+  { name: 'Agentic Systems',       workArea: 'Lab',               databaseId: '33fcbc4f-2123-81f8-a188-cb9b08e136d2', icon: '⚙️' },
+  { name: 'RL & Alignment',        workArea: 'Personal Interest', databaseId: '33fcbc4f-2123-81fa-a680-e9a9f3c802b8', icon: '🎯' },
+  { name: 'AI Safety & Philosophy',workArea: 'Personal Interest', databaseId: '33fcbc4f-2123-81bb-822e-f07a9d2a3e1e', icon: '🔒' },
+  { name: 'Surveys & Misc',        workArea: 'Personal Interest', databaseId: '33fcbc4f-2123-81b6-b977-c974002960f8', icon: '📚' },
+  { name: 'Reasoning Training',    workArea: 'Side Project',      databaseId: '33fcbc4f-2123-81c7-98b4-d54c60348214', icon: '🧠' },
+  { name: 'Visual Agents',         workArea: 'Side Project',      databaseId: '33fcbc4f-2123-81be-bbde-ff6af9704087', icon: '🕹️' },
+];
+
 chrome.runtime.onInstalled.addListener(() => {
   setupContextMenus();
   migrateFromLegacy();
+  seedProjects();
 });
+
+async function seedProjects() {
+  const local = await chrome.storage.local.get(['projects', 'seeded']);
+  if (local.seeded || (local.projects && local.projects.length > 0)) return;
+
+  const projects = SEED_PROJECTS.map(p => ({
+    id: generateId(),
+    name: p.name,
+    workArea: p.workArea,
+    databaseId: p.databaseId,
+    icon: p.icon,
+    color: '#667eea',
+    defaultCategory: '',
+    defaultWorkArea: p.workArea,
+    createdAt: Date.now()
+  }));
+
+  const firstId = projects[0].id;
+  await chrome.storage.local.set({ projects, seeded: true });
+  await chrome.storage.sync.set({ activeProjectId: firstId });
+  console.log('[Paper Saver] Seeded', projects.length, 'projects from config');
+}
 
 chrome.runtime.onStartup.addListener(() => {
   setupContextMenus();
