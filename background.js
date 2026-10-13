@@ -400,6 +400,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === 'save-page') {
       let pageData = null;
       try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => window.extractPageInfo ? window.extractPageInfo() : null
@@ -500,17 +504,6 @@ function showNotification(title, message) {
     });
   } catch (e) { /* ignore notification errors */ }
 }
-
-// ============================================================
-// KEYBOARD SHORTCUT
-// ============================================================
-
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'save-to-notion') {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) chrome.action.openPopup();
-  }
-});
 
 // ============================================================
 // TAB BADGE - show ✓ on already-saved tabs

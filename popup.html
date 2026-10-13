@@ -23,7 +23,7 @@
 
     <!-- Project switcher bar -->
     <div class="project-bar" id="projectBar">
-      <div class="project-active" id="projectActive">
+      <div class="project-active" id="projectActive" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
         <span class="project-dot" id="projectDot"></span>
         <span class="project-name" id="projectName">Loading...</span>
         <svg class="project-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -31,7 +31,7 @@
         </svg>
       </div>
       <div class="project-dropdown" id="projectDropdown" style="display:none;">
-        <div class="project-list" id="projectList"></div>
+        <div class="project-list" id="projectList" role="listbox"></div>
         <div class="project-dropdown-footer">
           <button type="button" id="manageProjectsBtn">⚙️ Manage projects</button>
         </div>

@@ -450,15 +450,4 @@
     return [];
   }
 
-  // ============================================================
-  // KEYBOARD SHORTCUT LISTENER
-  // ============================================================
-
-  document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
-      e.preventDefault();
-      chrome.runtime.sendMessage({ action: 'openPopup' });
-    }
-  });
-
 })();

@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let allowDuplicateSave   = false;
   let isUpdateMode         = false;
   let tab                  = null;
+  let projectsCache        = null;  // getProjects response, shared by loadProjects and Quick save
+  let pendingDefaults      = null;  // project/legacy category + work area, applied after page info
+  let contentScriptReady   = null;  // promise for content.js injection (injected once per popup)
 
   // ============================================================
   // INIT
@@ -40,8 +43,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Get current tab
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  // 2. Extract page info + selected text in a single script execution
+  // 2. Load projects first so window.currentProjectId is set before duplicate checks
+  await loadProjects();
+
+  // 3. Extract page info + selected text in a single script execution
   try {
+    await ensureContentScript();
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
@@ -74,10 +81,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     allowDuplicateSave = true;
   }
 
-  // 3. Load project bar + preferences
-  await loadProjects();
+  // 4. Apply project defaults after page info, so the detected content type wins
+  applyProjectDefaults();
 
-  // 4. Try enrichment (non-blocking)
+  // 5. Try enrichment (non-blocking)
   tryEnrichment();
 
   // ============================================================
@@ -92,20 +99,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   saveAnywayBtn.addEventListener('click', handleSaveAnyway);
 
   // Project bar toggle
-  document.getElementById('projectActive').addEventListener('click', (e) => {
+  const projectActive = document.getElementById('projectActive');
+  projectActive.addEventListener('click', (e) => {
     e.stopPropagation();
-    const dropdown = document.getElementById('projectDropdown');
-    const bar = document.getElementById('projectBar');
-    const isOpen = dropdown.style.display !== 'none';
-    dropdown.style.display = isOpen ? 'none' : 'block';
-    bar.classList.toggle('open', !isOpen);
+    setProjectDropdown(document.getElementById('projectDropdown').style.display === 'none');
+  });
+  projectActive.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      projectActive.click();
+    }
+  });
+
+  // Keyboard navigation inside the open project dropdown
+  document.getElementById('projectBar').addEventListener('keydown', (e) => {
+    if (document.getElementById('projectDropdown').style.display === 'none') return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setProjectDropdown(false);
+      projectActive.focus();
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = projectItems();
+      const idx = items.indexOf(document.activeElement);
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      const next = idx === -1
+        ? (step > 0 ? 0 : items.length - 1)
+        : (idx + step + items.length) % items.length;
+      items[next]?.focus();
+    }
   });
 
   // Close project dropdown when clicking outside
-  document.addEventListener('click', () => {
-    document.getElementById('projectDropdown').style.display = 'none';
-    document.getElementById('projectBar').classList.remove('open');
-  });
+  document.addEventListener('click', () => setProjectDropdown(false));
 
   document.getElementById('manageProjectsBtn').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
@@ -114,6 +142,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ============================================================
   // PROJECT BAR
   // ============================================================
+
+  // Inject content.js on demand (it is no longer auto-injected on every page).
+  // Injection is idempotent, so it runs once per popup and the promise is reused.
+  function ensureContentScript() {
+    if (!contentScriptReady) {
+      contentScriptReady = chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    }
+    return contentScriptReady;
+  }
+
+  function setProjectDropdown(open) {
+    document.getElementById('projectDropdown').style.display = open ? 'block' : 'none';
+    document.getElementById('projectBar').classList.toggle('open', open);
+    projectActive.setAttribute('aria-expanded', String(open));
+  }
+
+  function projectItems() {
+    return [...document.querySelectorAll('#projectList .project-item')];
+  }
+
+  // Applied after page info is displayed. Project defaults only fill empty fields,
+  // so the detected content type and duplicate values win; legacy defaults overwrite.
+  function applyProjectDefaults() {
+    if (!pendingDefaults) return;
+    const { overwrite, category, workArea } = pendingDefaults;
+    const categorySelect = document.getElementById('category');
+    const workAreaSelect = document.getElementById('workArea');
+    if (category && (overwrite || !categorySelect.value)) categorySelect.value = category;
+    if (workArea && (overwrite || !workAreaSelect.value)) workAreaSelect.value = workArea;
+  }
 
   async function loadProjects() {
     try {
@@ -125,32 +186,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const response = await chrome.runtime.sendMessage({ action: 'getProjects' });
-      const { projects, activeProjectId } = response || {};
+      projectsCache = response || {};
+      const { projects, activeProjectId } = projectsCache;
 
       if (!projects || projects.length === 0) {
         document.getElementById('projectName').textContent = 'No project — set up in Settings';
         document.getElementById('projectDot').style.background = '#ccc';
-        // Fall back to legacy sync defaults
+        // Fall back to legacy sync defaults (applied after page info)
         const settings = await chrome.storage.sync.get(['defaultCategory', 'defaultWorkArea']);
-        if (settings.defaultCategory) document.getElementById('category').value = settings.defaultCategory;
-        if (settings.defaultWorkArea) document.getElementById('workArea').value = settings.defaultWorkArea;
+        pendingDefaults = { overwrite: true, category: settings.defaultCategory, workArea: settings.defaultWorkArea };
         return;
       }
 
       const active = projects.find(p => p.id === activeProjectId) || projects[0];
       window.currentProjectId = active.id;
       renderProjectBar(active, projects);
-
-      // Apply project defaults (only if category/workArea aren't already set by content type)
-      const categorySelect = document.getElementById('category');
-      const workAreaSelect = document.getElementById('workArea');
-
-      if (active.defaultCategory && !categorySelect.value) {
-        categorySelect.value = active.defaultCategory;
-      }
-      if (active.defaultWorkArea && !workAreaSelect.value) {
-        workAreaSelect.value = active.defaultWorkArea;
-      }
+      pendingDefaults = { overwrite: false, category: active.defaultCategory, workArea: active.defaultWorkArea };
 
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -188,9 +239,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         item.appendChild(check);
       }
 
+      item.setAttribute('role', 'option');
+      item.tabIndex = 0;
+      item.setAttribute('aria-selected', String(project.id === activeProject.id));
+
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         handleProjectSwitch(project, allProjects);
+      });
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleProjectSwitch(project, allProjects);
+        }
       });
       list.appendChild(item);
     });
@@ -199,12 +260,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function handleProjectSwitch(project, allProjects) {
     await chrome.runtime.sendMessage({ action: 'setActiveProject', projectId: project.id });
     window.currentProjectId = project.id;
+    if (projectsCache) projectsCache.activeProjectId = project.id;
 
     renderProjectBar(project, allProjects);
 
-    // Close dropdown
-    document.getElementById('projectDropdown').style.display = 'none';
-    document.getElementById('projectBar').classList.remove('open');
+    // Close dropdown and return focus to the project button
+    setProjectDropdown(false);
+    projectActive.focus();
 
     // Apply new project defaults
     if (project.defaultCategory) document.getElementById('category').value = project.defaultCategory;
@@ -223,6 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function tryEnrichment() {
     if (!tab) return;
     try {
+      await ensureContentScript();
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => window.getEnrichedPageInfo ? window.getEnrichedPageInfo() : null
@@ -402,8 +465,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let activeProject = null;
     try {
-      const resp = await chrome.runtime.sendMessage({ action: 'getProjects' });
-      const { projects, activeProjectId } = resp || {};
+      if (!projectsCache) {
+        projectsCache = (await chrome.runtime.sendMessage({ action: 'getProjects' })) || {};
+      }
+      const { projects, activeProjectId } = projectsCache;
       activeProject = (projects || []).find(p => p.id === activeProjectId) || (projects || [])[0];
     } catch (e) { /* use defaults */ }
 
@@ -621,6 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshTitleBtn.style.opacity = '0.5';
     refreshTitleBtn.style.pointerEvents = 'none';
     try {
+      await ensureContentScript();
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => window.extractPageInfo ? window.extractPageInfo() : null
@@ -672,12 +738,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getWorkAreaDisplayName(w) {
     return { 'work': 'Work', 'lab': 'Lab', 'side-project': 'Side Project', 'personal-interest': 'Personal Interest' }[w] || w;
-  }
-});
-
-// Handle keyboard shortcut to trigger save
-chrome.commands?.onCommand?.addListener((command) => {
-  if (command === 'save-to-notion') {
-    document.getElementById('saveBtn')?.click();
   }
 });
