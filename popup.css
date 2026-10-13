@@ -4,9 +4,21 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 380px;
+  overflow: hidden;
+}
+
 body {
   width: 380px;
   min-height: 500px;
+  /* Chrome popups cap at 600px tall. Scroll inside the body with a stable gutter so
+     a scrollbar appearing/disappearing can't change the width and re-trigger layout
+     (which made the popup resize/flicker open-close in a loop). */
+  max-height: 600px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #333;
